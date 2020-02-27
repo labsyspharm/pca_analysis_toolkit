@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import yaml
 
@@ -45,8 +46,8 @@ def dna_corrcoef(image_filepath, output_filepath):
 
 if __name__ == '__main__':
     # paths
-    params_filepath = './params.yaml'
-    output_folderpath = '../output/'
+    params_filepath = sys.argv[1]
+    output_folderpath = sys.argv[2]
 
     # load parameters
     with open(params_filepath, 'r') as infile:
