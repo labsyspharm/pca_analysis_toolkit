@@ -10,4 +10,4 @@
 
 module load gcc/6.2.0 python/3.7.4
 source ../virtualenv/bin/activate
-python main.py
+python main.py params.yaml ../output/
