@@ -1,40 +1,4 @@
-image_ZM131_5B_136:
-    image_filepath: "../data/5B/ZM131_5B_136/registration/ZM131_5B_136.ome.tif"
-    marker_filepath: "../data/5B/markers.csv"
-    mask_nuclei:
-        mask_filepath: "../data/5B/ZM131_5B_136/segmentation/nucleiRingOutlines.tif"
-    mask_cell:
-        mask_filepath: "../data/5B/ZM131_5B_136/segmentation/cellRingOutlines.tif"
-    roi_B:
-        center_x: 984
-        center_y: 7990
-        width: 783
-        height: 617
-        rotation: 270
-    roi_C:
-        center_x: 710
-        center_y: 12938
-        width: 488
-        height: 609
-        rotation: 270
-    roi_D:
-        center_x: 885
-        center_y: 12276
-        width: 750
-        height: 715
-        rotation: 270
-
-image_ZM131_10B_286:
-    image_filepath: "../data/10B/ZM131_10B_286/registration/ZM131_10B_286.ome.tif"
-    marker_filepath: "../data/10B/markers.csv"
-    mask_nuclei:
-        mask_filepath: "../data/10B/ZM131_10B_286/segmentation/nucleiRingOutlines.tif"
-    mask_cell:
-        mask_filepath: "../data/10B/ZM131_10B_286/segmentation/cellRingOutlines.tif"
-    roi_A:
-        center_x: 2947
-        center_y: 11328
-        width: 2167
-        height: 1173
-        rotation: 270
-
+image_name1:
+    image_filepath: "../input_data/ZM131_5B_136_roi_0.ome.tif"
+    roi_filepath: "../input_data/ZM131_5B_136_roi_0.ome.tif-1105078-rois.csv"
+    markers_filepath: "../input_data/markers.csv"

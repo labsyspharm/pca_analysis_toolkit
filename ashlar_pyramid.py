@@ -13,8 +13,8 @@ import numpy as np
 import skimage.io
 import skimage.external.tifffile.tifffile
 import skimage.transform
-import h5py
-import typing
+import pytiff
+
 
 def preduce(coords, img_in, img_out):
     (iy1, ix1), (iy2, ix2) = coords
@@ -38,7 +38,8 @@ def format_shape(shape):
     return "%dx%d" % (shape[1], shape[0])
 
 
-def construct_xml(filename, shapes, num_channels, dtype, pixel_size=1, channel_name_list=None):
+def construct_xml(filename, shapes, num_channels, dtype, pixel_size=1,
+        channel_name_list=None):
     if channel_name_list is None:
         channel_name_list = ['Channel {}'.format(i) for i in range(num_channels)]
 
@@ -125,28 +126,22 @@ def patch_ometiff_xml(path, xml_bytes):
         f.write(struct.pack('<Q', xml_offset))
 
 
-def main(input_filepath_list: typing.List[str],
-        output_filepath: str,
-        channel_name_list: typing.List[str]):
+def main(array_list, channel_name_list, out_path):
 
-#    tile_size = 1024
-    tile_size = 128
+    tile_size = 1024
 
     if hasattr(os, 'sched_getaffinity'):
         num_workers = len(os.sched_getaffinity(0))
     else:
         num_workers = multiprocessing.cpu_count()
 
-    in_paths = input_filepath_list
-    out_path = output_filepath
     if os.path.exists(out_path):
         print("%s already exists, aborting" % out_path)
         sys.exit(1)
 
     print("Appending input images")
-    for i, path in enumerate(in_paths):
-        print("    %d: %s" % (i + 1, path))
-        img_in = skimage.io.imread(path, memmap=True)
+    for i, img_in in enumerate(array_list):
+        print("    %d: %s" % (i + 1, channel_name_list[i]))
         if i == 0:
             base_shape = img_in.shape
             dtype = img_in.dtype
@@ -187,15 +182,6 @@ def main(input_filepath_list: typing.List[str],
     executor = concurrent.futures.ThreadPoolExecutor(num_workers)
 
     shape_pairs = zip(shapes[:-1], shapes[1:])
-
-    # create file first bc cannot do create+read+write
-    with h5py.File(name='temp.h5', mode='w'):
-        pass
-    imgfile = h5py.File(name='temp.h5', mode='r+')
-    # write initial layer to disk
-    img_in = skimage.io.imread(out_path) # in (C, X, Y) format
-    imgfile.create_dataset(name='level_1', data=img_in, chunks=True)
-
     for level, (shape_in, shape_out) in enumerate(shape_pairs):
 
         print(
@@ -209,40 +195,27 @@ def main(input_filepath_list: typing.List[str],
             itertools.product(ty, tx),
             itertools.product(ty + tile_size, tx + tile_size)
         ))
-        img_in = imgfile['level_{}'.format(level+1)]
-        img_out = imgfile.create_dataset(name='level_{}'.format(level+2),
-                shape=(num_channels, shape_out[0], shape_out[1]), dtype=dtype, chunks=True)
-        layer_out = np.empty(shape_out, dtype)
-        print()
+        img_in = pytiff.Tiff(out_path)
+        img_out = np.empty(shape_out, dtype)
 
         for c in range(num_channels):
 
-            page = c
-            layer_in = img_in[page, ...]
+            page = level * num_channels + c
+            img_in.set_page(page)
             for i, _ in enumerate(executor.map(
                 preduce, coords,
-                itertools.repeat(layer_in), itertools.repeat(layer_out)
+                itertools.repeat(img_in), itertools.repeat(img_out)
             )):
                 percent = int((i + 1) / len(coords) * 100)
                 if i % 20 == 0 or percent == 100:
                     print("\r    %d: %d%%" % (c + 1, percent), end='')
                     sys.stdout.flush()
-            img_out[page, ...] = layer_out
+            imsave(out_path, img_out, tile_size)
             print()
 
+        img_in.close()
         print()
-    # construct tiff from h5
-    for level in range(2, 2+len(imgfile)-1):
-        level_img = imgfile['level_{}'.format(level)]
-        count_channel = level_img.shape[0]
-        for channel in range(count_channel):
-            img_out = level_img[channel, ...]
-            imsave(out_path, img_out, tile_size)
 
-    xml = construct_xml(os.path.basename(out_path), shapes, num_channels, dtype, pixel_size=0.65,
-            channel_name_list=channel_name_list)
+    xml = construct_xml(os.path.basename(out_path), shapes, num_channels, dtype, 0.325)
     patch_ometiff_xml(out_path, xml)
-
-    os.remove('./temp.h5')
-
 
