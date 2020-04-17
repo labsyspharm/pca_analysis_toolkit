@@ -126,10 +126,7 @@ def patch_ometiff_xml(path, xml_bytes):
         f.write(struct.pack('<Q', xml_offset))
 
 
-def main(array_list, channel_name_list, out_path):
-
-    tile_size = 1024
-
+def main(array_list, channel_name_list, out_path, tile_size=1024):
     if hasattr(os, 'sched_getaffinity'):
         num_workers = len(os.sched_getaffinity(0))
     else:
@@ -153,20 +150,20 @@ def main(array_list, channel_name_list, out_path):
             if img_in.shape != base_shape:
                 print(
                     "%s: expected shape %s, got %s"
-                    % (path, base_shape, img_in.shape)
+                    % (channel_name_list[i], base_shape, img_in.shape)
                 )
                 sys.exit(1)
             if img_in.dtype != dtype:
                 print(
                     "%s: expected dtype %s, got %s"
-                    % (path, dtype, img_in.dtype)
+                    % (channel_name_list[i], dtype, img_in.dtype)
                 )
                 sys.exit(1)
             kwargs = {}
         imsave(out_path, img_in, tile_size, **kwargs)
     print()
 
-    num_channels = len(in_paths)
+    num_channels = len(channel_name_list)
     num_levels = np.ceil(np.log2(max(base_shape) / tile_size)) + 1
     factors = 2 ** np.arange(num_levels)
     shapes = (np.ceil(np.array(base_shape) / factors[:,None])).astype(int)
@@ -216,6 +213,7 @@ def main(array_list, channel_name_list, out_path):
         img_in.close()
         print()
 
-    xml = construct_xml(os.path.basename(out_path), shapes, num_channels, dtype, 0.325)
+    xml = construct_xml(os.path.basename(out_path), shapes, num_channels, dtype, 0.325,
+            channel_name_list=channel_name_list)
     patch_ometiff_xml(out_path, xml)
 
