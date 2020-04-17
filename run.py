@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from skimage import draw, segmentation
 from skimage.external import tifffile
 
 import ashlar_pyramid
@@ -22,12 +23,13 @@ def dna_corrcoef(array_list, output_filepath):
             columns=['cycle', 'reference_cycle', 'corrcoef'])
     df.to_csv(output_filepath, index=False)
 
-def process_single_image(param_dict):
+def process_single_image(image_name, output_folderpath, param_dict):
     # unpack
-    roi_df = pd.read_csv(params_dict['roi_filepath'])
+    roi_df = pd.read_csv(param_dict['roi_filepath'])
     marker_list = pd.read_csv(param_dict['markers_filepath'], header=None)[0].tolist()
     mask_name_list = [name[len('mask_'):] for name in param_dict\
             if name.startswith('mask_')]
+    name_list = marker_list + mask_name_list + ['ROI']
 
     # make single-channel image iterator
     def iter_channel():
@@ -39,36 +41,50 @@ def process_single_image(param_dict):
         for key in param_dict.keys():
             if key.startswith('mask_'):
                 with tifffile.TiffFile(param_dict[key]['filepath']) as infile:
-                    yield infile.series[0].asarray(memmap=True)
+                    yield infile.series[0].pages[0].asarray(memmap=True)[0, ...]
 
     def iter_roi(array_list, bbox_coords=None):
         for array in array_list:
             if bbox_coords is None:
                 yield array
             else:
-                xl, xu, yl, yu = bbox_coords
-                yield array[xl:xu, yl:yu]
+                b = [int(np.round(c)) for c in bbox_coords]
+                yield array[b[0]:b[1], b[2]:b[3]]
 
     # loop over ROIs
+    for img in iter_channel():
+        img_shape = img.shape
+        break
+
     for index, row in roi_df.iterrows():
         # parse points
-        x_list = [float(t.split(',')[0]) for t in row['all_points'].split()]
-        y_list = [float(t.split(',')[1]) for t in row['all_points'].split()]
+        y_list = [float(t.split(',')[0]) for t in row['all_points'].split()]
+        x_list = [float(t.split(',')[1]) for t in row['all_points'].split()]
         bbox_coords = min(x_list), max(x_list), min(y_list), max(y_list)
 
+        # construct ROI mask
+        rr, cc = draw.polygon(r=x_list, c=y_list, shape=img_shape)
+        roi_mask = np.zeros(img_shape)
+        roi_mask[rr, cc] = 1
+        roi_contour = segmentation.find_boundaries(roi_mask, mode='inner')\
+                .astype(np.uint16)
+
         # generate pyramid
+        array_iterable = itertools.chain(iter_channel(), iter_mask(), [roi_contour])
         ashlar_pyramid.main(
-                array_list=iter_roi(
-                    array_list=itertools.chain(iter_channel(), iter_mask()),
-                    bbox_coords),
-                channel_name_list=marker_list + mask_name_list,
-                out_path=param_dict['output_filepath'],
+                array_list=iter_roi(array_list=array_iterable, bbox_coords=bbox_coords),
+                channel_name_list=name_list,
+                out_path=os.path.join(output_folderpath,
+                    '{}_{}.ome.tif'.format(image_name, row['Name'])),
+                tile_size=32,
                 )
 
         # calculate DNA correlation coefficient
         dna_corrcoef(
-                array_list=list(iter_roi(array_list=list(iter_channel()), bbox_coords)),
-                output_filepath=param_dict['corrcoef_filepath'],
+                array_list=list(iter_roi(array_list=list(iter_channel()),
+                    bbox_coords=bbox_coords)),
+                output_filepath=os.path.join(output_folderpath,
+                    '{}_{}.csv'.format(image_name, row['Name'])),
                 )
 
 if __name__ == '__main__':
@@ -81,7 +97,10 @@ if __name__ == '__main__':
         param_dict = yaml.load(infile, Loader=yaml.Loader)
 
     # loop over images
-    image_name_list = [name for name in params if name.startswith('image_')]
     for key in param_dict.keys():
         if key.startswith('image_'):
-            process_single_image(param_dict[key])
+            process_single_image(
+                    image_name=key[len('image_'):],
+                    output_folderpath=output_folderpath,
+                    param_dict=param_dict[key],
+                    )
