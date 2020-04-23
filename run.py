@@ -1,4 +1,5 @@
 import os
+import sys
 import yaml
 import itertools
 
@@ -98,8 +99,8 @@ def process_single_image(image_name, output_folderpath, param_dict):
 
 if __name__ == '__main__':
     # paths
-    params_filepath = './params.yaml'
-    output_folderpath = './'
+    params_filepath = sys.argv[1]
+    output_folderpath = sys.argv[2]
 
     # load parameters
     with open(params_filepath, 'r') as infile:
