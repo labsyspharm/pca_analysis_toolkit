@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import itertools
+import re
 
 import numpy as np
 import pandas as pd
@@ -11,18 +12,32 @@ from skimage.external import tifffile
 
 import ashlar_pyramid
 
-def dna_corrcoef(array_list, output_filepath):
+def dna_corrcoef(array_list, marker_list, output_filepath):
+    # parse markers
+    dna_pattern = [
+            'DNA\d+', # 'DNA' followed by one or more digits
+            'DNA_\d+', # 'DNA' followed by one or more digits
+            ]
+    def is_dna(n):
+        for p in dna_pattern:
+            if re.fullmatch(pattern=p, string=n) is not None:
+                return True
+        return False
+
+    dna_index = [i for i, name in enumerate(marker_list) if is_dna(name)]
+
     # calculate
     record = []
-    ref = array_list[0]
-    for ch in range(0, len(array_list), 4):
-        cc = np.corrcoef(ref.flatten(), array_list[ch].flatten())[0, 1]
-        record.append((ch+1, 1, cc))
+    ref_channel = 0
+    for cycle, channel in enumerate(dna_index):
+        cc = np.corrcoef(array_list[ref_channel].flatten(),
+                array_list[channel].flatten())[0, 1]
+        record.append([cycle+1, channel+1, ref_channel+1, cc])
 
     # write output file
     df = pd.DataFrame.from_records(record,
-            columns=['cycle', 'reference_cycle', 'corrcoef'])
-    df.to_csv(output_filepath, index=False)
+            columns=['cycle', 'channel', 'reference_channel', 'corrcoef'])
+    df.to_csv(output_filepath, index=False, na_rep='nan')
 
 def process_single_image(image_name, output_folderpath, param_dict):
     # unpack
@@ -93,6 +108,7 @@ def process_single_image(image_name, output_folderpath, param_dict):
         dna_corrcoef(
                 array_list=list(iter_roi(array_list=list(iter_channel()),
                     bbox_coords=bbox_coords)),
+                marker_list=marker_list,
                 output_filepath=os.path.join(output_folderpath,
                     '{}_{}.csv'.format(image_name, row['Name'])),
                 )
