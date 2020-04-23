@@ -1,6 +1,8 @@
 import os
+import sys
 import yaml
 import itertools
+import re
 
 import numpy as np
 import pandas as pd
@@ -10,23 +12,52 @@ from skimage.external import tifffile
 
 import ashlar_pyramid
 
-def dna_corrcoef(array_list, output_filepath):
+def dna_corrcoef(array_list, marker_list, output_filepath):
+    # parse markers
+    dna_pattern = [
+            'DNA\d+', # 'DNA' followed by one or more digits
+            'DNA_\d+', # 'DNA' followed by one or more digits
+            ]
+    def is_dna(n):
+        for p in dna_pattern:
+            if re.fullmatch(pattern=p, string=n) is not None:
+                return True
+        return False
+
+    dna_index = [i for i, name in enumerate(marker_list) if is_dna(name)]
+
     # calculate
     record = []
-    ref = array_list[0]
-    for ch in range(0, len(array_list), 4):
-        cc = np.corrcoef(ref.flatten(), array_list[ch].flatten())[0, 1]
-        record.append((ch+1, 1, cc))
+    ref_channel = 0
+    for cycle, channel in enumerate(dna_index):
+        cc = np.corrcoef(array_list[ref_channel].flatten(),
+                array_list[channel].flatten())[0, 1]
+        record.append([cycle+1, channel+1, ref_channel+1, cc])
 
     # write output file
     df = pd.DataFrame.from_records(record,
-            columns=['cycle', 'reference_cycle', 'corrcoef'])
-    df.to_csv(output_filepath, index=False)
+            columns=['cycle', 'channel', 'reference_channel', 'corrcoef'])
+    df.to_csv(output_filepath, index=False, na_rep='nan')
 
 def process_single_image(image_name, output_folderpath, param_dict):
     # unpack
     roi_df = pd.read_csv(param_dict['roi_filepath'])
     marker_list = pd.read_csv(param_dict['markers_filepath'], header=None)[0].tolist()
+
+    with tifffile.TiffFile(param_dict['image_filepath']) as infile:
+        img_shape = infile.series[0].pages[0].shape
+        num_channel = len(infile.series[0].pages)
+
+    # check if channels match
+    if num_channel <= len(marker_list):
+        marker_list = marker_list[:num_channel]
+    else:
+        print('image {} has more channels (n={}) than given markers (n={})'\
+                ', skipped due to concern of incomplete data'\
+                .format(image_name, num_channel, len(marker_list)))
+        return
+
+    # append mask and ROI to list
     mask_name_list = [name[len('mask_'):] for name in param_dict\
             if name.startswith('mask_')]
     name_list = marker_list + mask_name_list + ['ROI']
@@ -52,15 +83,20 @@ def process_single_image(image_name, output_folderpath, param_dict):
                 yield array[b[0]:b[1], b[2]:b[3]]
 
     # loop over ROIs
-    for img in iter_channel():
-        img_shape = img.shape
-        break
-
     for index, row in roi_df.iterrows():
         # parse points
         y_list = [float(t.split(',')[0]) for t in row['all_points'].split()]
         x_list = [float(t.split(',')[1]) for t in row['all_points'].split()]
         bbox_coords = min(x_list), max(x_list), min(y_list), max(y_list)
+
+        # check if bounding box is outside of image
+        checklist = [bbox_coords[0] >= 0, bbox_coords[1] < img_shape[0],
+                bbox_coords[2] >= 0, bbox_coords[3] < img_shape[1]]
+
+        if not all(checklist):
+            print('ROI {} has bounding box {} outside of image scope, skipped'\
+                    .format(row['Name'], bbox_coords))
+            continue
 
         # construct ROI mask
         rr, cc = draw.polygon(r=x_list, c=y_list, shape=img_shape)
@@ -83,14 +119,15 @@ def process_single_image(image_name, output_folderpath, param_dict):
         dna_corrcoef(
                 array_list=list(iter_roi(array_list=list(iter_channel()),
                     bbox_coords=bbox_coords)),
+                marker_list=marker_list,
                 output_filepath=os.path.join(output_folderpath,
                     '{}_{}.csv'.format(image_name, row['Name'])),
                 )
 
 if __name__ == '__main__':
     # paths
-    params_filepath = './params.yaml'
-    output_folderpath = './'
+    params_filepath = sys.argv[1]
+    output_folderpath = sys.argv[2]
 
     # load parameters
     with open(params_filepath, 'r') as infile:
