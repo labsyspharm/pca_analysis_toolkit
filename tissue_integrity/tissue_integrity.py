@@ -46,8 +46,7 @@ if __name__ == '__main__':
     marker_filepath = sys.argv[2]
     output_folderpath = sys.argv[3]
 
-    marker_list = pd.read_csv(param_dict[key]['marker_filepath'],
-                    header=none)[0].tolist()
+    marker_list = pd.read_csv(marker_filepath, header=None)[0].tolist()
 
     # construct output file name
     b = os.path.basename(image_filepath)
