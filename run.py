@@ -43,6 +43,21 @@ def process_single_image(image_name, output_folderpath, param_dict):
     # unpack
     roi_df = pd.read_csv(param_dict['roi_filepath'])
     marker_list = pd.read_csv(param_dict['markers_filepath'], header=None)[0].tolist()
+
+    with tifffile.TiffFile(param_dict['image_filepath']) as infile:
+        img_shape = infile.series[0].pages[0].shape
+        num_channel = len(infile.series[0].pages)
+
+    # check if channels match
+    if num_channel <= len(marker_list):
+        marker_list = marker_list[:num_channel]
+    else:
+        print('image {} has more channels (n={}) than given markers (n={})'\
+                ', skipped due to concern of incomplete data'\
+                .format(image_name, num_channel, len(marker_list)))
+        return
+
+    # append mask and ROI to list
     mask_name_list = [name[len('mask_'):] for name in param_dict\
             if name.startswith('mask_')]
     name_list = marker_list + mask_name_list + ['ROI']
@@ -68,10 +83,6 @@ def process_single_image(image_name, output_folderpath, param_dict):
                 yield array[b[0]:b[1], b[2]:b[3]]
 
     # loop over ROIs
-    for img in iter_channel():
-        img_shape = img.shape
-        break
-
     for index, row in roi_df.iterrows():
         # parse points
         y_list = [float(t.split(',')[0]) for t in row['all_points'].split()]
