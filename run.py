@@ -62,6 +62,15 @@ def process_single_image(image_name, output_folderpath, param_dict):
         x_list = [float(t.split(',')[1]) for t in row['all_points'].split()]
         bbox_coords = min(x_list), max(x_list), min(y_list), max(y_list)
 
+        # check if bounding box is outside of image
+        checklist = [bbox_coords[0] >= 0, bbox_coords[1] < img_shape[0],
+                bbox_coords[2] >= 0, bbox_coords[3] < img_shape[1]]
+
+        if not all(checklist):
+            print('ROI {} has bounding box {} outside of image scope, skipped'\
+                    .format(row['Name'], bbox_coords))
+            continue
+
         # construct ROI mask
         rr, cc = draw.polygon(r=x_list, c=y_list, shape=img_shape)
         roi_mask = np.zeros(img_shape)
