@@ -1,8 +1,0 @@
-image_name1:
-    image_filepath: "../input_data/ZM131_10B_286_roi_A.ome.tif"
-    roi_filepath: "../input_data/ZM131_10B_286_roi_A.ome.tif-1106483-rois.csv"
-    markers_filepath: "../input_data/markers.csv"
-    mask_nuclei:
-        filepath: "../input_data/nucleiRingOutlines.tif"
-    mask_cell:
-        filepath: "../input_data/cellRingOutlines.tif"
