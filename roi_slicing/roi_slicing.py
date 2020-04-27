@@ -4,10 +4,12 @@ import yaml
 import itertools
 
 import numpy as np
+import pandas as pd
 
 from skimage import draw, segmentation
 from skimage.external import tifffile
 
+sys.path.append('/n/scratch2/hw233/pca_analysis_toolkit/ext/')
 import ashlar_pyramid
 
 def process_single_image(image_name, output_folderpath, param_dict):
@@ -43,7 +45,7 @@ def process_single_image(image_name, output_folderpath, param_dict):
         for key in param_dict.keys():
             if key.startswith('mask_'):
                 with tifffile.TiffFile(param_dict[key]['filepath']) as infile:
-                    yield infile.series[0].pages[0].asarray(memmap=True)[0, ...]
+                    yield infile.series[0].pages[0].asarray(memmap=True).astype(np.uint16)
 
     def iter_roi(array_list, bbox_coords=None):
         for array in array_list:
