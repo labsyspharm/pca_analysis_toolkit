@@ -2,7 +2,7 @@ image_name1:
   image_filepath: /path/to/image.ome.tif
   markers_filepath: /path/to/markers.csv
   mask_cell:
-    filepath: /path/to/cellRingOutlines.tif
+    filepath: /path/to/cellRingMask.tif
   mask_nuclei:
-    filepath: /path/to/nucleiRingOutlines.tif
+    filepath: /path/to/nucleiRingMask.tif
   roi_filepath: /path/to/roi_list.csv
