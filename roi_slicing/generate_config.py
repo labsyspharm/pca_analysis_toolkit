@@ -7,10 +7,10 @@ if __name__ == '__main__':
                 'roi_filepath': '/path/to/roi_list.csv',
                 'markers_filepath': '/path/to/markers.csv',
                 'mask_nuclei': {
-                    'filepath': '/path/to/nucleiRingOutlines.tif',
+                    'filepath': '/path/to/nucleiRingMask.tif',
                     },
                 'mask_cell': {
-                    'filepath': '/path/to/cellRingOutlines.tif',
+                    'filepath': '/path/to/cellRingMask.tif',
                     },
                 },
             }

@@ -45,7 +45,9 @@ def process_single_image(image_name, output_folderpath, param_dict):
         for key in param_dict.keys():
             if key.startswith('mask_'):
                 with tifffile.TiffFile(param_dict[key]['filepath']) as infile:
-                    yield infile.series[0].pages[0].asarray(memmap=True).astype(np.uint16)
+                    mask = infile.series[0].pages[0].asarray(memmap=True)
+                    outline = segmentation.find_boundaries(mask > 0, mode='inner')
+                    yield outline
 
     def iter_roi(array_list, bbox_coords=None):
         for array in array_list:
