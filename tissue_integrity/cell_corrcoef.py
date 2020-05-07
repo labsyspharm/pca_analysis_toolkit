@@ -3,6 +3,7 @@ import re
 
 import numpy as np
 import pandas as pd
+import tqdm
 
 from matplotlib import pyplot as plt
 from skimage.external import tifffile
@@ -60,20 +61,18 @@ if __name__ == '__main__':
     # parse
     dna_index = [i for i, n in enumerate(marker_list) if is_DNA(n)]
     dna_cycle = list(range(1, len(dna_index)+1))
-    c3_df = pd.DataFrame(np.nan, columns=['DNA{}_vs_1'.format(i) for i in dna_cycle]\
-            + ['DNA{}_vs_prev'.format(i) for i in dna_cycle],
-            index=range(feat_df.shape[0]))
-    for col in ['CellId', 'X_position', 'Y_position']:
-        c3_df[col] = feat_df[col].values
+    cc1_col = ['DNA{}_vs_1'.format(i) for i in dna_cycle]
+    ccprev_col = ['DNA{}_vs_prev'.format(i) for i in dna_cycle]
 
     # calculate corr coef
-    test = []
+    record = []
     with tifffile.TiffFile(image_filepath) as tif:
         dna_image = np.stack([tif.series[0].pages[i].asarray(memmap=True)\
                 for i in dna_index], axis=-1)
 
-        for index, row in c3_df.iterrows():
-            y, x = int(np.round(row['X_position'])), int(np.round(row['Y_position']))
+        for index in tqdm.tqdm(feat_df.index):
+            cellid, xpos, ypos = feat_df.loc[index, ['CellId', 'Y_position', 'X_position']]
+            x, y = int(np.round(xpos)), int(np.round(ypos))
             checklist = [x >= 0, x < cellmask.shape[0], y >= 0, y < cellmask.shape[1]]
             if not all(checklist):
                 continue
@@ -85,3 +84,13 @@ if __name__ == '__main__':
             px = dna_image[px_coords[:, 0], px_coords[:, 1], :].T
             r1, rprev = custom_corrcoef(px)
 
+            # pack
+            result = {'CellId': cellid, 'X_position': xpos, 'Y_position': ypos}
+            for i in range(r1.shape[0]):
+                result[cc1_col[i]] = r1[i]
+            for i in range(rprev.shape[0]):
+                result[ccprev_col[i]] = rprev[i]
+            record.append(result)
+
+    c3_df = pd.DataFrame.from_records(record)
+    c3_df.to_csv('c3_df.csv', index=False, na_rep='NaN')
