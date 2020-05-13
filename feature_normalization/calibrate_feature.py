@@ -47,7 +47,7 @@ if __name__ == '__main__':
     feature_list = []
     feature_col = ['log10({})'.format(col) for col in marker_col]
 
-    header = feature_col + ['CellID', 'slide_id', 'roi_row_id']
+    header = ['CellID', 'slide_id', 'roi_row_id'] + feature_col
     outfile = open(output_filepath, 'w', newline='')
     outwriter = csv.writer(outfile, delimiter=',')
     outwriter.writerow(header)
@@ -65,8 +65,8 @@ if __name__ == '__main__':
         Y = row['slope'] * X + row['intercept']
         df = pd.DataFrame(Y, columns=range(Y.shape[1]), index=range(Y.shape[0]))
         df.insert(0, 'CellID', feature_df['CellID'].values)
-        df.insert(0, 'slide_id', row['slide_id'])
-        df.insert(0, 'roi_row_id', row['roi_row_id'])
+        df.insert(1, 'slide_id', row['slide_id'])
+        df.insert(2, 'roi_row_id', row['roi_row_id'])
 
         outwriter.writerows(df.values.tolist())
         outfile.flush()
