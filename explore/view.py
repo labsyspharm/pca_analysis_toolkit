@@ -28,10 +28,23 @@ if __name__ == '__main__':
     celloutline = segmentation.find_boundaries(cellmask>0, mode='inner')
     celloutline = img_as_uint(celloutline)
 
+    # slice channels
+    if len(sys.argv) > 2:
+        selected_marker_list = []
+        for name in sys.argv[2:]:
+            if name in marker_list:
+                selected_marker_list.append(name)
+            else:
+                print('specified marker {} not found in markers.csv'\
+                        .format(name))
+    else:
+        selected_marker_list = marker_list
     channel_list = []
     with tifffile.TiffFile(img_filepath) as infile:
-        for marker, page in zip(marker_list, infile.series[0].pages):
-            channel_list.append((marker, page.asarray()))
+        for name in selected_marker_list:
+            index = marker_list.index(name)
+            channel = infile.series[0].pages[index].asarray()
+            channel_list.append((name, channel))
 
     # initialize session
     with napari.gui_qt():
@@ -47,12 +60,19 @@ if __name__ == '__main__':
         viewer.add_image(celloutline, name='celloutline', visible=False,
                 blending='additive')
         # initial view
-        config = {
-                'DNA_1': 'red',
-                'DNA_2': 'green',
-                'DNA_3': 'blue',
-                'celloutline': 'gray',
-                }
+        if all(['DNA_'+str(i) in selected_marker_list for i in range(1, 4)]):
+            config = {
+                    'DNA_1': 'red',
+                    'DNA_2': 'green',
+                    'DNA_3': 'blue',
+                    'celloutline': 'gray',
+                    }
+        else:
+            config = {}
+            for n, c in zip(selected_marker_list, ['red', 'green', 'blue']):
+                config[n] = c
+            config['celloutline'] = 'gray'
+        # change visibility and colormap
         for key in config:
             viewer.layers[key].visible=True
             viewer.layers[key].colormap = config[key]
