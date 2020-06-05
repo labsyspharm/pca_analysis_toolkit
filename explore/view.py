@@ -1,6 +1,5 @@
-import os
-import sys
-import glob
+import typing
+import argparse
 
 import numpy as np
 import napari
@@ -9,36 +8,44 @@ from napari import viewer as nv
 from skimage import io, segmentation, img_as_uint, exposure
 from skimage.external import tifffile
 
-if __name__ == '__main__':
-    # paths
-    roi_folderpath = sys.argv[1]
-    roi_folderpath = os.path.expanduser(roi_folderpath)
-
-    # parse path
-    img_filepath = glob.glob(os.path.join(roi_folderpath, 'registration',
-        '*.ome.tif'))[0]
-    cellmask_filepath = glob.glob(os.path.join(roi_folderpath, 'segmentation',
-        '*', 'cellRingMask.tif'))[0]
-    marker_filepath = os.path.join(roi_folderpath, 'markers.csv')
-
+def view(img_filepath: str, marker_filepath: str, mask_filepath: str=None,
+        selected_marker_list: typing.List[str]=None):
+    '''
+    Prepare napari viewer of (selected) channels of an ome.tif image.
+    args:
+        img_filepath: str
+            File path of the ome.tif image.
+        marker_filepath: str
+            File path of the marker list, one line per marker name.
+        mask_filepath: str [optional]
+            File path of the cell (or nuclei) mask to include.
+            If None, no mask will be included.
+        selected_marker_list: list of str [optional]
+            Specific markers to show. If not None, only show these markers.
+            If None, show all markers in the marker list.
+    '''
     # load data
     with open(marker_filepath, 'r') as infile:
         marker_list = [line.strip() for line in infile.readlines()]
-    cellmask = io.imread(cellmask_filepath)
-    celloutline = segmentation.find_boundaries(cellmask>0, mode='inner')
-    celloutline = img_as_uint(celloutline)
+    if mask_filepath is not None:
+        mask = io.imread(mask_filepath)
+        outline = segmentation.find_boundaries(mask>0, mode='inner')
+        outline = img_as_uint(outline)
 
-    # slice channels
-    if len(sys.argv) > 2:
-        selected_marker_list = []
-        for name in sys.argv[2:]:
+    # check if selected markers exist
+    if selected_marker_list is not None:
+        tmp_list = []
+        for name in selected_marker_list:
             if name in marker_list:
-                selected_marker_list.append(name)
+                tmp_list.append(name)
             else:
-                print('specified marker {} not found in markers.csv'\
+                print('selected marker {} not found in markers.csv'\
                         .format(name))
+        selected_marker_list = tmp_list
     else:
         selected_marker_list = marker_list
+
+    # load image to memory
     channel_list = []
     with tifffile.TiffFile(img_filepath) as infile:
         for name in selected_marker_list:
@@ -46,35 +53,52 @@ if __name__ == '__main__':
             channel = infile.series[0].pages[index].asarray()
             channel_list.append((name, channel))
 
-    # initialize session
+    # initialize napari session
     with napari.gui_qt():
         # create viewer
         viewer = nv.Viewer(show=False)
-        # add all channels
-        for marker, channel in channel_list:
-            img = exposure.rescale_intensity(channel,
+
+        # add layers
+        for name, channel in channel_list:
+            channel_adj = exposure.rescale_intensity(channel,
                     in_range=tuple(np.percentile(channel, (1, 99))))
-            viewer.add_image(img, name=marker, visible=False,
+            viewer.add_image(channel_adj, name=name, visible=False,
                     blending='additive')
+
+        # turn on first 3 (or less) for display
+        for cmap, layer in zip(['red', 'green', 'blue'], viewer.layers):
+            layer.visible = True
+            layer.colormap = cmap
+
         # add mask
-        viewer.add_image(celloutline, name='celloutline', visible=False,
-                blending='additive')
-        # initial view
-        if all(['DNA_'+str(i) in selected_marker_list for i in range(1, 4)]):
-            config = {
-                    'DNA_1': 'red',
-                    'DNA_2': 'green',
-                    'DNA_3': 'blue',
-                    'celloutline': 'gray',
-                    }
-        else:
-            config = {}
-            for n, c in zip(selected_marker_list, ['red', 'green', 'blue']):
-                config[n] = c
-            config['celloutline'] = 'gray'
-        # change visibility and colormap
-        for key in config:
-            viewer.layers[key].visible=True
-            viewer.layers[key].colormap = config[key]
+        if mask_filepath is not None:
+            viewer.add_image(outline, name='outline', visible=True,
+                    blending='additive', colormap='gray')
 
         viewer.show()
+
+if __name__ == '__main__':
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('img_filepath', type=str,
+            help='File path of the ome.tif image')
+    parser.add_argument('marker_filepath', type=str,
+            help='File path of the marker list')
+    parser.add_argument('--mask_filepath', type=str, default=None,
+            help='File path of the mask image')
+    parser.add_argument('--markers', type=str, default=None,
+            help='Selected marker names, separated by comma')
+    args = parser.parse_args()
+
+    # process
+    if args.markers is None:
+        selected_marker_list = args.markers
+    else:
+        selected_marker_list = args.markers.split(',')
+
+    # run
+    view(img_filepath=args.img_filepath,
+            marker_filepath=args.marker_filepath,
+            mask_filepath=args.mask_filepath,
+            selected_marker_list=selected_marker_list,
+            )
