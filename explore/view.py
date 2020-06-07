@@ -30,6 +30,7 @@ def view(img_filepath: str, marker_filepath: str, mask_filepath: str=None,
     if mask_filepath is not None:
         mask = io.imread(mask_filepath)
         outline = segmentation.find_boundaries(mask>0, mode='inner')
+        mask = img_as_uint(mask)
         outline = img_as_uint(outline)
 
     # check if selected markers exist
@@ -72,6 +73,8 @@ def view(img_filepath: str, marker_filepath: str, mask_filepath: str=None,
 
         # add mask
         if mask_filepath is not None:
+            viewer.add_image(mask, name='mask', visible=False,
+                    blending='additive', colormap='gray')
             viewer.add_image(outline, name='outline', visible=True,
                     blending='additive', colormap='gray')
 
