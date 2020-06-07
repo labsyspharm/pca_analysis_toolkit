@@ -126,11 +126,17 @@ def patch_ometiff_xml(path, xml_bytes):
         f.write(struct.pack('<Q', xml_offset))
 
 
-def main(array_list, channel_name_list, out_path, tile_size=1024):
+def main(array_list, channel_name_list=None, out_path=None, tile_size=1024):
     if hasattr(os, 'sched_getaffinity'):
         num_workers = len(os.sched_getaffinity(0))
     else:
         num_workers = multiprocessing.cpu_count()
+
+    if channel_name_list is None:
+        channel_name_list = [str(i+1) for i in range(len(array_list))]
+
+    if out_path is None:
+        out_path = './out.ome.tif'
 
     if os.path.exists(out_path):
         print("%s already exists, aborting" % out_path)
