@@ -73,8 +73,8 @@ def view(img_filepath: str, marker_filepath: str, mask_filepath: str=None,
 
         # add mask
         if mask_filepath is not None:
-            viewer.add_image(mask, name='mask', visible=False,
-                    blending='additive', colormap='gray')
+            viewer.add_labels(mask, name='mask', visible=False,
+                    blending='additive')
             viewer.add_image(outline, name='outline', visible=True,
                     blending='additive', colormap='gray')
 
