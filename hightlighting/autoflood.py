@@ -30,7 +30,7 @@ if __name__ == '__main__':
         img = tif.series[0].pages[args.channel_index].asarray()
     img_scaled = exposure.rescale_intensity(img,
             in_range=tuple(np.percentile(img, (1, 99))))
-    mask = img_scaled > args.start_threshold
+    mask = (img_scaled > args.start_threshold).astype(int)
 
     start = img_scaled.max()
     stop = args.stop_threshold
