@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 import napari
 import tqdm
@@ -20,6 +22,8 @@ if __name__ == '__main__':
             help='Threshold to stop growth at, in uint16 range')
     parser.add_argument('out_filepath', type=str,
             help='File path of the output .tif mask')
+    parser.add_argument('--finalcheck', action='store_true', default=False,
+            help='Open napari window for checking at the end')
     args = parser.parse_args()
 
     # load data
@@ -31,7 +35,7 @@ if __name__ == '__main__':
 
     for threshold in tqdm.tqdm(range(start, stop, -1)):
         # check if any step needed
-        if (img==threshold).sum() == 0:
+        if (img[np.logical_not(mask)]==threshold).sum() == 0:
             continue
         # region defined by the highlighting
         region_list = measure.regionprops(label_image=mask,
@@ -67,8 +71,9 @@ if __name__ == '__main__':
     io.imsave(args.out_filepath, mask)
 
     # final check
-    with napari.gui_qt():
-        viewer = nv.Viewer(show=False)
-        viewer.add_image(img, name='img', colormap='gray', opacity=0.5)
-        viewer.add_labels(mask, name='highlight')
+    if args.finalcheck:
+        with napari.gui_qt():
+            viewer = nv.Viewer(show=False)
+            viewer.add_image(img, name='img', colormap='gray', opacity=0.5)
+            viewer.add_labels(mask, name='highlight')
         viewer.show()
