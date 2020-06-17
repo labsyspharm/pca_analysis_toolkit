@@ -2,7 +2,7 @@ import argparse
 
 import numpy as np
 import tifffile
-import tqdm
+import scipy.ndimage
 
 from skimage import io, segmentation, measure, exposure
 
@@ -30,17 +30,18 @@ if __name__ == '__main__':
         img = tif.series[0].pages[args.channel_index].asarray()
     img_scaled = exposure.rescale_intensity(img,
             in_range=tuple(np.percentile(img, (1, 99))))
-    mask = (img_scaled > args.start_threshold).astype(int)
+    mask = (img_scaled > args.start_threshold).astype('uint16')
 
     start = img_scaled.max()
     stop = args.stop_threshold
 
-    for threshold in tqdm.tqdm(range(start, stop, -1), disable=True):
+    for threshold in range(start, stop, -1):
         # check if any step needed
         if (img_scaled[np.logical_not(mask)]==threshold).sum() == 0:
             continue
         # region defined by the highlighting
-        region_list = measure.regionprops(label_image=mask,
+        labeled_mask, _ = scipy.ndimage.label(mask)
+        region_list = measure.regionprops(label_image=labeled_mask,
                 intensity_image=img_scaled)
         # small chunks for faster iteration
         for region in region_list:
