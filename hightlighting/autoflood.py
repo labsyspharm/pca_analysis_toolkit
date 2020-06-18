@@ -1,5 +1,6 @@
 import argparse
 
+import tqdm
 import numpy as np
 import tifffile
 import scipy.ndimage
@@ -35,7 +36,7 @@ if __name__ == '__main__':
     start = img_scaled.max()
     stop = args.stop_threshold
 
-    for threshold in range(start, stop, -1):
+    for threshold in tqdm.tqdm(range(start, stop, -1)):
         # check if any step needed
         if (img_scaled[np.logical_not(mask)]==threshold).sum() == 0:
             continue
