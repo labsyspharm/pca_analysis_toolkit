@@ -11,7 +11,7 @@ import multiprocessing
 import concurrent.futures
 import numpy as np
 import skimage.io
-import skimage.external.tifffile.tifffile
+import tifffile
 import skimage.transform
 import pytiff
 
@@ -28,7 +28,7 @@ def preduce(coords, img_in, img_out):
 
 
 def imsave(path, img, tile_size, **kwargs):
-    skimage.external.tifffile.tifffile.imsave(
+    tifffile.imsave(
         path, img, bigtiff=True, append=True, tile=(tile_size, tile_size),
         metadata=None, **kwargs
     )
