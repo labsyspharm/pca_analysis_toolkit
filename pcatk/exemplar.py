@@ -8,7 +8,7 @@ import matplotlib.colors as mcolors
 from skimage.measure import regionprops_table
 from skimage import img_as_float, img_as_ubyte
 
-from pcatk import util
+from .util import check_overwrite
 
 
 Slice = typing.Tuple[slice, slice]
@@ -96,7 +96,7 @@ def render(
     """
     # preprocessing
     out_folderpath = Path(out_folderpath)
-    util.check_overwrite(overwrite=overwrite, path=out_folderpath)
+    check_overwrite(overwrite=overwrite, path=out_folderpath)
 
     # not much memory optimization done for now
     # if memory is an issue, pass h5py.Dataset instead of np.ndarray
@@ -136,7 +136,7 @@ def assemble(
     # preprocessing
     in_folderpath = Path(in_folderpath)
     out_filepath = Path(out_filepath)
-    util.check_overwrite(out_filepath)
+    check_overwrite(out_filepath)
 
     # if fewer image than needed, add blank images
     image_list = [sio.imread(p) for p in in_folderpath.iterdir()]
@@ -159,6 +159,6 @@ def assemble(
         ]
 
     # assembling
-    image_list = [image_list[i:i + shape[0]] for i in range(0, num_block, shape[0])]
+    image_list = [image_list[i : i + shape[0]] for i in range(0, num_block, shape[0])]
     out = np.block(image_list)
     sio.imsave(out_filepath, out)

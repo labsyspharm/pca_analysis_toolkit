@@ -5,7 +5,8 @@ from pathlib import Path
 import h5py
 import tifffile
 
-from pcatk import util, ashlar_pyramid
+from .util import check_overwrite
+from .external import ashlar_pyramid
 
 
 def uniquify(name_list: typing.List[str]) -> typing.List[str]:
@@ -70,7 +71,7 @@ def ometif2tif(
     in_filepath = Path(in_filepath)
     out_folderpath = Path(out_folderpath)
     names_filepath = Path(names_filepath)
-    util.check_overwrite(overwrite=overwrite, path=out_folderpath)
+    check_overwrite(overwrite=overwrite, path=out_folderpath)
 
     # load marker name
     if names_filepath is None:
@@ -110,7 +111,7 @@ def ometif2hdf5(
     in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
     names_filepath = Path(names_filepath)
-    util.check_overwrite(overwrite=overwrite, path=out_filepath)
+    check_overwrite(overwrite=overwrite, path=out_filepath)
 
     # load marker name
     if names_filepath is None:
@@ -144,7 +145,7 @@ def tif2ometif(
     # preprocessing
     in_folderpath = Path(in_folderpath)
     out_filepath = Path(out_filepath)
-    util.check_overwrite(overwrite=overwrite, path=out_filepath)
+    check_overwrite(overwrite=overwrite, path=out_filepath)
 
     # make generators
     def arr_gen():

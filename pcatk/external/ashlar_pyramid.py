@@ -138,7 +138,7 @@ def patch_ometiff_xml(path, xml_bytes):
         f.write(struct.pack("<Q", xml_offset))
 
 
-def main(array_list, channel_name_list=None, out_path=None, tile_size=1024):
+def build_pyramid(array_list, channel_name_list=None, out_path=None, tile_size=1024):
     if hasattr(os, "sched_getaffinity"):
         num_workers = len(os.sched_getaffinity(0))
     else:
