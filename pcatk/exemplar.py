@@ -159,6 +159,6 @@ def assemble(
         ]
 
     # assembling
-    image_list = [image_list[i : i + shape[0]] for i in range(0, num_block, shape[0])]
+    image_list = [image_list[i:i + shape[0]] for i in range(0, num_block, shape[0])]
     out = np.block(image_list)
     sio.imsave(out_filepath, out)

@@ -32,7 +32,7 @@ def minitile_corrcoef(
     b1 = blockwise_view(arr1, block_shape, require_aligned_blocks=False, aslist=False)
     b2 = blockwise_view(arr2, block_shape, require_aligned_blocks=False, aslist=False)
     # subtract mean
-    axes = tuple(np.arange(b1.ndim, dtype=int)[b1.ndim // 2 :])
+    axes = tuple(np.arange(b1.ndim, dtype=int)[b1.ndim // 2:])
     b1 -= b1.mean(axis=axes, keepdims=True)
     b2 -= b2.mean(axis=axes, keepdims=True)
     # numerator of corrcoef
