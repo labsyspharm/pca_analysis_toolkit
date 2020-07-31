@@ -17,8 +17,6 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "scikit-image",
-        "dask[array]",
-        # TODO: fill here
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
